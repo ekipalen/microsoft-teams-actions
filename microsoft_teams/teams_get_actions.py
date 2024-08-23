@@ -5,7 +5,7 @@ from microsoft_teams.support import (
     BASE_GRAPH_URL,
     build_headers,
 )
-from microsoft_teams.models import UserSearch
+from microsoft_teams.models import UserSearch, TeamSearchRequest
 
 
 @action
@@ -16,7 +16,7 @@ def get_joined_teams(
     ],
 ) -> Response[dict]:
     """
-    Get all Teams the user is joined to with the full details.
+    Get all Teams the user is joined to with the full details. Can be used to search Teams as well.
 
     Args:
         token: OAuth2 token to use for the operation.
@@ -33,6 +33,39 @@ def get_joined_teams(
         return Response(result=response.json())
     else:
         raise ActionError(f"Failed to get joined teams: {response.text}")
+
+
+@action
+def search_team_by_name(
+    token: OAuth2Secret[
+        Literal["microsoft"],
+        list[Literal["Group.Read.All"]],
+    ],
+    search_request: TeamSearchRequest,
+) -> Response[dict]:
+    """
+    Search for a Microsoft Team by its name.
+
+    Args:
+        token: OAuth2 token to use for the operation.
+        search_request: Pydantic model containing the team name to search for.
+
+    Returns:
+        Result of the search operation, including details of matching teams.
+    """
+    headers = build_headers(token)
+    team_name = search_request.team_name
+
+    response = requests.get(
+        f"{BASE_GRAPH_URL}/groups?$filter=displayName eq '{team_name}' and resourceProvisioningOptions/Any(x:x eq 'Team')",
+        headers=headers,
+    )
+
+    if response.status_code in [200, 201]:
+        teams = response.json().get("value", [])
+        return Response(result=teams)
+    else:
+        raise ActionError(f"Failed to search for team: {response.text}")
 
 
 @action
@@ -106,29 +139,18 @@ def search_user(
         Literal["microsoft"],
         list[Literal["User.Read.All"]],
     ],
-) -> Response[list]:
+) -> Response[dict]:
     """
-    Search for a user by email, first name, or last name, and include the details
-    of the user making the request to be used in Chat's.
+    Search for a user by email, first name, or last name.
 
     Args:
         user_search: The search criteria (email, first name, or last name).
         token: OAuth2 token to use for the operation.
 
     Returns:
-        Result of the operation, including user details if found, and the details of the requesting user.
+        Result of the operation with user details if found.
     """
     headers = build_headers(token)
-    results = []
-
-    me_response = requests.get(f"{BASE_GRAPH_URL}/me", headers=headers)
-    if me_response.status_code in [200, 201]:
-        my_details = me_response.json()
-        results.append(my_details)
-    else:
-        raise ActionError(
-            f"Failed to retrieve current user details: {me_response.text}"
-        )
 
     if user_search.email:
         response = requests.get(
@@ -150,7 +172,6 @@ def search_user(
 
     if response.status_code in [200, 201]:
         search_results = response.json().get("value", [])
-        results.extend(search_results)
-        return Response(result=results)
+        return Response(result=search_results)
     else:
         raise ActionError(f"Failed to search for user: {response.text}")

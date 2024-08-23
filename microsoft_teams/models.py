@@ -1,37 +1,17 @@
-from enum import Enum
 from pydantic import BaseModel, Field, EmailStr, model_validator
-from typing import Dict, Optional
+from typing import Optional, List
 
 
-class Location(BaseModel):
-    name: str = Field(description="Name of the location", default="")
-    url: str = Field(description="URL of the location", default="")
+class TeamSearchRequest(BaseModel):
+    team_name: str = Field(
+        ..., description="The name of the Microsoft Team to search for."
+    )
 
 
-class File(BaseModel):
-    location: Location = Field(description="Location details")
-    file: Dict = Field(description="File details", default={})
-
-
-class FileList(BaseModel):
-    files: list[File] = Field(description="List of files", default=[])
-
-
-class ColumnType(str, Enum):
-    text = "text"
-    boolean = "boolean"
-    datetime = "dateTime"
-    number = "number"
-
-
-class ListColumn(BaseModel):
-    column_name: str = Field(description="Name of the column", default="")
-    column_type: ColumnType = Field(description="Type of the column", default="")
-
-
-class SharepointList(BaseModel):
-    list_name: str = Field(description="Name of the list", default="")
-    columns: list[ListColumn] = Field(description="List of columns", default=[])
+class ChannelMessageRequest(BaseModel):
+    team_id: str = Field(..., description="The ID of the Microsoft Team.")
+    channel_id: str = Field(..., description="The ID of the channel within the team.")
+    message: str = Field(..., description="The message to post.")
 
 
 class TeamDetails(BaseModel):
@@ -54,3 +34,14 @@ class UserSearch(BaseModel):
                 "At least one of email, first_name, or last_name must be provided"
             )
         return values
+
+
+class SendMessageRequest(BaseModel):
+    chat_id: str = Field(..., description="The ID of the chat to send the message to.")
+    message: str = Field(..., description="The message content to send.")
+
+
+class ChatCreationRequest(BaseModel):
+    recipient_ids: List[str] = Field(
+        ..., description="List of recipient user IDs for the chat."
+    )

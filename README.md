@@ -2,7 +2,7 @@
 
 Action package for interaction with Microsoft Teams resources.
 
-Currently capably of listing details from users Teams, listing members and channels of Team, searching for users, posting channel messages, creating new Teams, creating one on one chats and sending messages to those. 
+Currently capable of listing details from users Teams, searching for Teams by name, listing members and channels of Team, searching for users, posting channel messages, creating new Teams, creating one on one and group chats and sending messages to those. 
 
 ## Prompt Examples
 
@@ -28,12 +28,14 @@ Post "Hello" to that team's general channel
 
 In order to use the action package you need to go into https://portal.azure.com and register new Azure Entra ID (formerly Azure AD) application. Follow the detailed instructions [here](https://sema4.ai/docs/actions/auth/microsoft).
 
-Grant the application necessary scopes to use actions.
+Currently the Actions in this package use the following scopes.
 
-    - Files.Read
-    - Files.Read.All
-    - Files.ReadWrite
-    - Sites.Read.All
-    - Sites.ReadWrite.All
-
-
+    - Channel.ReadBasic.All
+    - ChannelMessage.Send
+    - Chat.Create
+    - ChatMessage.Send
+    - Group.Read.All
+    - Team.Create
+    - Team.ReadBasic.All
+    - TeamMember.Read.All
+    - User.Read.All

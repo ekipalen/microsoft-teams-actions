@@ -1,7 +1,12 @@
 import requests
 from sema4ai.actions import action, OAuth2Secret, Response, ActionError
 from typing import Literal
-from microsoft_teams.models import TeamDetails
+from microsoft_teams.models import (
+    TeamDetails,
+    ChannelMessageRequest,
+    SendMessageRequest,
+    ChatCreationRequest,
+)
 from microsoft_teams.support import (
     BASE_GRAPH_URL,
     build_headers,
@@ -14,29 +19,22 @@ def post_channel_message(
         Literal["microsoft"],
         list[Literal["ChannelMessage.Send"]],
     ],
-    team_id: str,
-    channel_id: str,
-    message: str,
+    message_request: ChannelMessageRequest,
 ) -> Response[dict]:
     """
-    Post a message to a specific channel in a Microsoft Team. Always confirm by telling the Team name where the post is about to go.
+    Post a message to a specific channel in a Microsoft Team. If multiple channels ask user which to use.
 
     Args:
         token: OAuth2 token to use for the operation.
-        team_id: The ID of the Microsoft Team.
-        channel_id: The ID of the channel within the team.
-        message: The message to post.
+        message_request: Pydantic model containing team_id, channel_id, and message.
 
     Returns:
         Result of the operation
     """
-    if not team_id or not channel_id or not message:
-        raise ActionError("The team_id, channel_id, and message must be provided")
-
     headers = build_headers(token)
-    payload = {"body": {"content": message}}
+    payload = {"body": {"content": message_request.message}}
     response = requests.post(
-        f"{BASE_GRAPH_URL}/teams/{team_id}/channels/{channel_id}/messages",
+        f"{BASE_GRAPH_URL}/teams/{message_request.team_id}/channels/{message_request.channel_id}/messages",
         headers=headers,
         json=payload,
     )
@@ -51,18 +49,18 @@ def create_team(
     team_details: TeamDetails,
     token: OAuth2Secret[
         Literal["microsoft"],
-        list[Literal["Team.Create"]],
+        list[Literal["Team.Create", "Group.Read.All"]],
     ],
 ) -> Response[dict]:
     """
-    Create a new Microsoft Team using the standard template.
+    Create a new Microsoft Team using the standard template. If details are not returned search the Team by it's name after a moment.
 
     Args:
         team_details: Details of the team to be created.
         token: OAuth2 token to use for the operation.
 
     Returns:
-        Result of the operation. If no ID get
+        Result of the operation, including the details of the newly created team.
     """
     headers = build_headers(token)
 
@@ -76,20 +74,24 @@ def create_team(
     response = requests.post(f"{BASE_GRAPH_URL}/teams", headers=headers, json=data)
 
     if response.status_code in [200, 201, 202]:
-        try:
-            result = response.json()
-            if result == {}:
+        search_response = requests.get(
+            f"{BASE_GRAPH_URL}/groups?$filter=displayName eq '{team_details.display_name}' and resourceProvisioningOptions/Any(x:x eq 'Team')",
+            headers=headers,
+        )
+
+        if search_response.status_code in [200, 201]:
+            search_results = search_response.json().get("value", [])
+            if search_results:
+                return Response(result=search_results[0])
+            else:
                 return Response(
                     result={
-                        "message": "Team created successfully, no additional details provided."
+                        "message": "Team created, but could not yet find the details, search after a moment."
                     }
                 )
-            return Response(result=result)
-        except ValueError:
-            return Response(
-                result={
-                    "message": "Team created successfully, but no JSON response returned."
-                }
+        else:
+            raise ActionError(
+                f"Team created, but failed to search for team: {search_response.text}"
             )
     else:
         error_details = response.text
@@ -98,19 +100,17 @@ def create_team(
 
 @action
 def create_chat(
-    user_id_1: str,
-    user_id_2: str,
+    chat_request: ChatCreationRequest,
     token: OAuth2Secret[
         Literal["microsoft"],
         list[Literal["Chat.Create"]],
     ],
 ) -> Response[dict]:
     """
-    Create a new one-on-one chat between two users.
+    Create a new chat (one-on-one or group) based on the number of recipients.
 
     Args:
-        user_id_1: The ID of the first user asking for it.
-        user_id_2: The ID of the second user.
+        chat_request: Pydantic model containing a list of recipient IDs.
         token: OAuth2 token to use for the operation.
 
     Returns:
@@ -118,20 +118,35 @@ def create_chat(
     """
     headers = build_headers(token)
 
+    me_response = requests.get(f"{BASE_GRAPH_URL}/me", headers=headers)
+    if me_response.status_code in [200, 201]:
+        my_details = me_response.json()
+        user_id_1 = my_details["id"]
+    else:
+        raise ActionError(
+            f"Failed to retrieve current user details: {me_response.text}"
+        )
+
     members = [
         {
             "@odata.type": "#microsoft.graph.aadUserConversationMember",
             "roles": ["owner"],
             "user@odata.bind": f"https://graph.microsoft.com/v1.0/users('{user_id_1}')",
-        },
-        {
-            "@odata.type": "#microsoft.graph.aadUserConversationMember",
-            "roles": ["owner"],
-            "user@odata.bind": f"https://graph.microsoft.com/v1.0/users('{user_id_2}')",
-        },
+        }
     ]
 
-    data = {"chatType": "oneOnOne", "members": members}
+    for user_id in chat_request.recipient_ids:
+        members.append(
+            {
+                "@odata.type": "#microsoft.graph.aadUserConversationMember",
+                "roles": ["owner"],
+                "user@odata.bind": f"https://graph.microsoft.com/v1.0/users('{user_id}')",
+            }
+        )
+
+    chat_type = "oneOnOne" if len(chat_request.recipient_ids) == 1 else "group"
+
+    data = {"chatType": chat_type, "members": members}
 
     response = requests.post(f"{BASE_GRAPH_URL}/chats", headers=headers, json=data)
 
@@ -143,8 +158,7 @@ def create_chat(
 
 @action
 def send_message_to_chat(
-    chat_id: str,
-    message: str,
+    message_request: SendMessageRequest,
     token: OAuth2Secret[
         Literal["microsoft"],
         list[Literal["ChatMessage.Send"]],
@@ -154,8 +168,7 @@ def send_message_to_chat(
     Send a message to a specific chat which needs to be created first.
 
     Args:
-        chat_id: The ID of the chat to send the message to.
-        message: The message content to send.
+        message_request: Pydantic model containing the chat ID and message content.
         token: OAuth2 token to use for the operation.
 
     Returns:
@@ -163,10 +176,12 @@ def send_message_to_chat(
     """
     headers = build_headers(token)
 
-    data = {"body": {"content": message}}
+    data = {"body": {"content": message_request.message}}
 
     response = requests.post(
-        f"{BASE_GRAPH_URL}/chats/{chat_id}/messages", headers=headers, json=data
+        f"{BASE_GRAPH_URL}/chats/{message_request.chat_id}/messages",
+        headers=headers,
+        json=data,
     )
 
     if response.status_code in [200, 201]:
