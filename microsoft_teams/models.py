@@ -1,5 +1,6 @@
-from pydantic import BaseModel, Field, EmailStr, model_validator
-from typing import Optional, List
+from typing import List, Optional
+
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 
 class TeamSearchRequest(BaseModel):
@@ -45,3 +46,8 @@ class ChatCreationRequest(BaseModel):
     recipient_ids: List[str] = Field(
         ..., description="List of recipient user IDs for the chat."
     )
+
+
+class AddUsersToTeamRequest(BaseModel):
+    team_id: str = Field(..., description="The ID of the Microsoft Team.")
+    user_ids: List[str] = Field(..., description="List of user IDs to add to the team.")

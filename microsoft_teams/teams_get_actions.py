@@ -1,11 +1,13 @@
-import requests
-from sema4ai.actions import action, OAuth2Secret, Response, ActionError
 from typing import Literal
+
+import requests
+from sema4ai.actions import ActionError, OAuth2Secret, Response, action
+
+from microsoft_teams.models import TeamSearchRequest, UserSearch
 from microsoft_teams.support import (
     BASE_GRAPH_URL,
     build_headers,
 )
-from microsoft_teams.models import UserSearch, TeamSearchRequest
 
 
 @action

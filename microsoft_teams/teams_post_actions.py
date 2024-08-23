@@ -1,11 +1,14 @@
-import requests
-from sema4ai.actions import action, OAuth2Secret, Response, ActionError
 from typing import Literal
+
+import requests
+from sema4ai.actions import ActionError, OAuth2Secret, Response, action
+
 from microsoft_teams.models import (
-    TeamDetails,
+    AddUsersToTeamRequest,
     ChannelMessageRequest,
-    SendMessageRequest,
     ChatCreationRequest,
+    SendMessageRequest,
+    TeamDetails,
 )
 from microsoft_teams.support import (
     BASE_GRAPH_URL,
@@ -188,3 +191,44 @@ def send_message_to_chat(
         return Response(result=response.json())
     else:
         raise ActionError(f"Failed to send chat message: {response.text}")
+
+
+@action
+def add_users_to_team(
+    add_users_request: AddUsersToTeamRequest,
+    token: OAuth2Secret[
+        Literal["microsoft"],
+        list[Literal["GroupMember.ReadWrite.All"]],
+    ],
+) -> Response[dict]:
+    """
+    Add one or more users to a Microsoft Team.
+
+    Args:
+        add_users_request: Pydantic model containing the team ID and list of user IDs.
+        token: OAuth2 token to use for the operation.
+
+    Returns:
+        Result of the operation, including details if successful.
+    """
+    headers = build_headers(token)
+    team_id = add_users_request.team_id
+    user_ids = add_users_request.user_ids
+
+    results = []
+
+    for user_id in user_ids:
+        response = requests.post(
+            f"{BASE_GRAPH_URL}/groups/{team_id}/members/$ref",
+            headers=headers,
+            json={"@odata.id": f"https://graph.microsoft.com/v1.0/users/{user_id}"},
+        )
+
+        if response.status_code in [200, 201, 204]:
+            results.append({"user_id": user_id, "status": "Added successfully"})
+        else:
+            results.append(
+                {"user_id": user_id, "status": f"Failed to add: {response.text}"}
+            )
+
+    return Response(result={"results": results})

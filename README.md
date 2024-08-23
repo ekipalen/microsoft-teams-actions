@@ -2,7 +2,16 @@
 
 Action package for interaction with Microsoft Teams resources.
 
-Currently capable of listing details from users Teams, searching for Teams by name, listing members and channels of Team, searching for users, posting channel messages, creating new Teams, creating one on one and group chats and sending messages to those. 
+Currently capable of:  
+
+    - listing the details from Teams the is joined 
+    - searching for Teams by name 
+    - listing members and channels of a Team 
+    - searching for users 
+    - posting channel messages 
+    - creating new Teams
+    - adding members to Teams 
+    - creating one on one and group chats and sending messages to those. 
 
 ## Prompt Examples
 
@@ -35,6 +44,7 @@ Currently the Actions in this package use the following scopes.
     - Chat.Create
     - ChatMessage.Send
     - Group.Read.All
+    - GroupMember.ReadWrite.All
     - Team.Create
     - Team.ReadBasic.All
     - TeamMember.Read.All
