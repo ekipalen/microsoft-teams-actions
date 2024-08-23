@@ -4,14 +4,15 @@ Action package for interaction with Microsoft Teams resources.
 
 Currently capable of:  
 
-    - listing the details from Teams the is joined 
-    - searching for Teams by name 
-    - listing members and channels of a Team 
-    - searching for users 
-    - posting channel messages 
-    - creating new Teams
-    - adding members to Teams 
-    - creating one on one and group chats and sending messages to those. 
+- **Listing the details of Teams that the user has joined.**
+- **Searching for Teams by name.**
+- **Listing members and channels of a Team.**
+- **Searching for users.**
+- **Posting messages in channels.**
+- **Creating new Teams.**
+- **Adding members to Teams.**
+- **Creating one-on-one and group chats and sending messages to them.**
+
 
 ## Prompt Examples
 
