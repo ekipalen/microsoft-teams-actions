@@ -12,6 +12,9 @@ Currently capable of:
 - **Creating new Teams.**
 - **Adding members to Teams.**
 - **Creating one-on-one and group chats and sending messages to them.**
+- **Getting messages from a specific channel.**
+- **Getting replies to a specific message in a channel.**
+- **Replying to a specific message in a channel.**
 
 
 ## Prompt Examples
@@ -42,6 +45,7 @@ Currently the Actions in this package use the following scopes.
 
     - Channel.ReadBasic.All
     - ChannelMessage.Send
+    - ChannelMessage.Read.All
     - Chat.Create
     - ChatMessage.Send
     - Group.Read.All

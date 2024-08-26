@@ -9,6 +9,7 @@ from microsoft_teams.models import (
     ChatCreationRequest,
     SendMessageRequest,
     TeamDetails,
+    ReplyMessageRequest,
 )
 from microsoft_teams.support import (
     BASE_GRAPH_URL,
@@ -232,3 +233,34 @@ def add_users_to_team(
             )
 
     return Response(result={"results": results})
+
+
+@action
+def reply_to_message(
+    token: OAuth2Secret[
+        Literal["microsoft"],
+        list[Literal["ChannelMessage.Send"]],
+    ],
+    reply_request: ReplyMessageRequest,
+) -> Response[dict]:
+    """
+    Reply to a specific message in a Microsoft Team channel.
+
+    Args:
+        token: OAuth2 token to use for the operation.
+        reply_request: Pydantic model containing team_id, channel_id, message_id, and the reply content.
+
+    Returns:
+        Result of the operation.
+    """
+    headers = build_headers(token)
+    payload = {"body": {"content": reply_request.reply}}
+    response = requests.post(
+        f"{BASE_GRAPH_URL}/teams/{reply_request.team_id}/channels/{reply_request.channel_id}/messages/{reply_request.message_id}/replies",
+        headers=headers,
+        json=payload,
+    )
+    if response.status_code in [200, 201]:
+        return Response(result=response.json())
+    else:
+        raise ActionError(f"Failed to reply to the message: {response.text}")

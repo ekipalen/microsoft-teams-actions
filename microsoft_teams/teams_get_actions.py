@@ -3,10 +3,17 @@ from typing import Literal
 import requests
 from sema4ai.actions import ActionError, OAuth2Secret, Response, action
 
-from microsoft_teams.models import TeamSearchRequest, UserSearch
+from microsoft_teams.models import (
+    TeamSearchRequest,
+    UserSearch,
+    GetChannelMessagesRequest,
+    GetMessageRepliesRequest,
+)
 from microsoft_teams.support import (
     BASE_GRAPH_URL,
     build_headers,
+    parse_channel_messages,
+    parse_message_replies,
 )
 
 
@@ -177,3 +184,73 @@ def search_user(
         return Response(result=search_results)
     else:
         raise ActionError(f"Failed to search for user: {response.text}")
+
+
+@action
+def get_channel_messages(
+    messages_request: GetChannelMessagesRequest,
+    token: OAuth2Secret[
+        Literal["microsoft"],
+        list[Literal["ChannelMessage.Read.All"]],
+    ],
+) -> Response[dict]:
+    """
+    Get messages from a specific channel in a Microsoft Team. Message replies not included but you can use "get_message_replies" if needed.
+
+    Args:
+        messages_request: Pydantic model containing the team ID, channel ID, and an optional limit for the number of messages to retrieve.
+        token: OAuth2 token to use for the operation.
+
+    Returns:
+        Result of the operation, including a list of parsed messages if successful.
+    """
+    headers = build_headers(token)
+
+    team_id = messages_request.team_id
+    channel_id = messages_request.channel_id
+    limit = messages_request.limit
+
+    url = f"https://graph.microsoft.com/beta/teams/{team_id}/channels/{channel_id}/messages?$top={limit}"
+
+    response = requests.get(url, headers=headers)
+
+    if response.status_code in [200, 201]:
+        parsed_data = parse_channel_messages(response.json())
+        return Response(result={"messages": parsed_data})
+    else:
+        raise ActionError(f"Failed to get channel messages: {response.text}")
+
+
+@action
+def get_message_replies(
+    replies_request: GetMessageRepliesRequest,
+    token: OAuth2Secret[
+        Literal["microsoft"],
+        list[Literal["ChannelMessage.Read.All"]],
+    ],
+) -> Response[dict]:
+    """
+    Get replies to a specific message in a Microsoft Team channel.
+
+    Args:
+        replies_request: Pydantic model containing the team ID, channel ID, and message ID.
+        token: OAuth2 token to use for the operation.
+
+    Returns:
+        Result of the operation, including a list of parsed replies if successful.
+    """
+    headers = build_headers(token)
+
+    team_id = replies_request.team_id
+    channel_id = replies_request.channel_id
+    message_id = replies_request.message_id
+
+    url = f"https://graph.microsoft.com/beta/teams/{team_id}/channels/{channel_id}/messages/{message_id}/replies"
+
+    response = requests.get(url, headers=headers)
+
+    if response.status_code in [200, 201]:
+        parsed_data = parse_message_replies(response.json())
+        return Response(result={"replies": parsed_data})
+    else:
+        raise ActionError(f"Failed to get message replies: {response.text}")

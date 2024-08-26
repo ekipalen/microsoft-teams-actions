@@ -51,3 +51,26 @@ class ChatCreationRequest(BaseModel):
 class AddUsersToTeamRequest(BaseModel):
     team_id: str = Field(..., description="The ID of the Microsoft Team.")
     user_ids: List[str] = Field(..., description="List of user IDs to add to the team.")
+
+
+class GetChannelMessagesRequest(BaseModel):
+    team_id: str = Field(..., description="The ID of the Microsoft Team.")
+    channel_id: str = Field(..., description="The ID of the channel within the team.")
+    limit: Optional[int] = Field(
+        5, description="The number of messages to retrieve. Defaults to 5."
+    )
+
+
+class GetMessageRepliesRequest(BaseModel):
+    team_id: str = Field(..., description="The ID of the Microsoft Team.")
+    channel_id: str = Field(..., description="The ID of the channel within the team.")
+    message_id: str = Field(
+        ..., description="The ID of the message to get replies for."
+    )
+
+
+class ReplyMessageRequest(BaseModel):
+    team_id: str = Field(..., description="The ID of the Microsoft Team.")
+    channel_id: str = Field(..., description="The ID of the channel within the team.")
+    message_id: str = Field(..., description="The ID of the message to reply to.")
+    reply: str = Field(..., description="The content of the reply message.")
