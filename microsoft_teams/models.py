@@ -57,7 +57,7 @@ class GetChannelMessagesRequest(BaseModel):
     team_id: str = Field(..., description="The ID of the Microsoft Team.")
     channel_id: str = Field(..., description="The ID of the channel within the team.")
     limit: Optional[int] = Field(
-        5, description="The number of messages to retrieve. Defaults to 5."
+        10, description="The number of messages to retrieve. Defaults to 10."
     )
 
 
